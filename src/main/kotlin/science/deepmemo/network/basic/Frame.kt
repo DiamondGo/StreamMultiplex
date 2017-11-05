@@ -17,12 +17,6 @@ enum class Command(val value: Byte) {
     }
 }
 
-data class Frame(
-        val version: Byte,
-        val command: Command,
-        val streamId: Int,
-        val data: ByteArray
-)
 
 typealias RawData = ByteArray
 
@@ -43,4 +37,17 @@ val RawData.streamId: Int get() {
 }
 
 val RawData.data: ByteArray get() = this.sliceArray((8..(8 + this.length - 1)))
+
+data class Frame(
+        val version: Byte,
+        val command: Command,
+        val streamId: Int,
+        val data: ByteArray
+) {
+    constructor(raw: RawData) : this(
+            version = raw.version,
+            command = raw.command,
+            streamId = raw.streamId,
+            data = raw.data)
+}
 
