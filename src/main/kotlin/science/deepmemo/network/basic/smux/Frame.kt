@@ -1,4 +1,4 @@
-package science.deepmemo.network.basic
+package science.deepmemo.network.basic.smux
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -37,6 +37,7 @@ val RawData.streamId: Int get() {
 }
 
 val RawData.data: ByteArray get() = this.sliceArray((8..(8 + this.length - 1)))
+
 
 data class Frame(
         val version: Byte,
