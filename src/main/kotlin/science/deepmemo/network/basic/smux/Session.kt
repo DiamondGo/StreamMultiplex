@@ -1,5 +1,6 @@
 package science.deepmemo.network.basic.smux
 
+import kotlinx.coroutines.experimental.CompletableDeferred
 import java.io.IOException
 import kotlinx.coroutines.experimental.channels.*
 import java.io.InputStream
@@ -15,16 +16,23 @@ data class WriteResult(
         val e: IOException?
 )
 
-class Session (val inputStream: InputStream,
-               val outputStream: OutputStream
+class Session (
+        val config: Config,
+        val inputStream: InputStream,
+        val outputStream: OutputStream,
+        val isClient: Boolean
 ) {
-    var nextStreamId: Int = 0
 
     /***
      * OpenStream is used to create a new stream.
      */
-    fun openStream(): Stream {
-        return Stream()
+    suspend fun openStream(): Stream? {
+        if (this.isClosed())
+            throw IOException("Session is closed")
+
+        val response = CompletableDeferred<Stream?>()
+        streamManager.send(StreamMsg.Allocate(response))
+        return response.await()
     }
 
     /***
@@ -32,26 +40,34 @@ class Session (val inputStream: InputStream,
      * is ready to be accepted.
      */
     fun acceptStream(): Stream {
-        return Stream()
+        return Stream(0, this)
     }
 
-    fun close() {
-
+    suspend fun close() {
+        streamManager.send(StreamMsg.CloseAll)
     }
 
     fun isClosed(): Boolean {
         return false
     }
 
-    fun numStreams(): Int {
-        return 0
+    suspend fun numStream(): Int {
+        val response = CompletableDeferred<Int>()
+        streamManager.send(StreamMsg.GetCount(response))
+        return response.await()
     }
 
+    suspend fun getStreamById(streamId: Int): Stream? {
+        val response = CompletableDeferred<Stream?>()
+        streamManager.send(StreamMsg.GetById(streamId, response))
+        return response.await()
+    }
     /***
      * notify the session that a stream has closed.
      */
-    fun streamClosed(streamId: Int) {
-
+    suspend fun streamClosed(stream: Stream) {
+        // remove from manager
+        streamManager.send(StreamMsg.Free(stream))
     }
 
     /***
@@ -87,6 +103,47 @@ class Session (val inputStream: InputStream,
     fun writeFrame(frame: Frame) {
 
     }
+
+    sealed class StreamMsg {
+        object CloseAll : StreamMsg()
+        class GetCount(val response: CompletableDeferred<Int>) : StreamMsg()
+        class Allocate(val response: CompletableDeferred<Stream?>) : StreamMsg()
+        class GetById(val streamId: Int, val response: CompletableDeferred<Stream?>) : StreamMsg()
+        class Free(val stream: Stream) : StreamMsg()
+    }
+
+    val streamManager = streamManageActor()
+    fun streamManageActor() = actor<StreamMsg> {
+        println("sreamManageActor start")
+        var curStreamId = 0
+        val streamMap = mutableMapOf<Int, Stream>()
+
+        for (msg in channel) {
+            when (msg) {
+                is StreamMsg.GetCount -> msg.response.complete(streamMap.size)
+                is StreamMsg.Allocate -> {
+                    if (streamMap.size >= config.maxOpenStream) {
+                        msg.response.complete(null)
+                    } else {
+                        while (streamMap.containsKey(curStreamId))
+                            curStreamId = ((curStreamId.toLong() + 1L) % config.maxOpenStream.toLong()).toInt() // in case maxOpenStream is Int.MAX_VALUE
+                        val stream = Stream(id = curStreamId, session = this@Session)
+                        streamMap += curStreamId to stream
+                        msg.response.complete(stream)
+                    }
+                }
+                is StreamMsg.GetById -> msg.response.complete(streamMap[msg.streamId])
+                is StreamMsg.Free -> streamMap.remove(msg.stream.id)
+                is StreamMsg.CloseAll -> {
+                    for ((_, stream) in streamMap)
+                        stream.close()
+                    streamMap.clear()
+                }
+            }
+        }
+
+    }
+
 }
 
 

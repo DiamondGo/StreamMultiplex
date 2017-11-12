@@ -1,8 +1,7 @@
-package science.deepmemo.network.basic
+package science.deepmemo.network.basic.smux
 
 import org.junit.Test
 import org.junit.BeforeClass
-import science.deepmemo.network.basic.smux.*
 import kotlin.test.*
 
 class FrameTest {
