@@ -32,6 +32,9 @@ class StreamTest {
         }
     }
 
+    /***
+     * fix for mockito 2
+     */
     private fun <T> any(): T {
         Mockito.any<T>()
         return uninitialized()
