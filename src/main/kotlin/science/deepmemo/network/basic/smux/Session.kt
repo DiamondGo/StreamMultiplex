@@ -114,7 +114,6 @@ class Session (
 
     val streamManager = streamManageActor()
     fun streamManageActor() = actor<StreamMsg> {
-        println("sreamManageActor start")
         var curStreamId = 0
         val streamMap = mutableMapOf<Int, Stream>()
 

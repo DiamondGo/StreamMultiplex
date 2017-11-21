@@ -12,18 +12,20 @@ data class Config(
         val maxFrameSize: Int,
         val maxReceiveBuffer: Int,
         val maxOpenStream: Int,
+        val maxFrame: Int,
         val maxStreamFrame: Int
 ) {
     companion object {
         val defaultConfig = Config(
-                Duration.ofSeconds(10),
-                Duration.ofSeconds(30),
-                Duration.ofSeconds(300),
-                Duration.ofSeconds(300),
-                4096,
-                4194304, // 4MB
-                1048576, // 2**20, should be enough
-                1024 // each stream will have this most frames in buffer
+                keepAliveInterval = Duration.ofSeconds(10),
+                keepAliveTimeout = Duration.ofSeconds(30),
+                receiveTimeout = Duration.ofSeconds(300),
+                sendTimeout = Duration.ofSeconds(300),
+                maxFrameSize = 4096,
+                maxReceiveBuffer = 4194304, // 4MB
+                maxOpenStream = 1048576, // 2**20, should be enough
+                maxFrame = 1024,
+                maxStreamFrame = 32 // each stream will have this most frames in buffer
         )
     }
 }

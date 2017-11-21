@@ -20,7 +20,7 @@ class FrameTest {
                 99, 100, 101) // data
         assertEquals(version, bytes.version)
         assertEquals(Command.SYN, bytes.command)
-        assertEquals(3, bytes.length)
+        assertEquals(3, bytes.dataSize)
         assertEquals(1 + (2 shl 8) + (3 shl 16) + (4 shl 24), bytes.streamId)
         val data = bytes.data
         assertEquals(3, data.size)

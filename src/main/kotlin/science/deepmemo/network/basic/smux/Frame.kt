@@ -26,7 +26,7 @@ val RawData.version: Byte
 val RawData.command: Command
     get() = Command.fromInt(this[1])!!
 
-val RawData.length: Int get() {
+val RawData.dataSize: Int get() {
     val buffer = ByteBuffer.wrap(this.sliceArray((2..3))).order(ByteOrder.LITTLE_ENDIAN)
     return buffer.short.toInt()
 }
@@ -36,7 +36,7 @@ val RawData.streamId: Int get() {
     return buffer.int
 }
 
-val RawData.data: ByteArray get() = this.sliceArray((8..(8 + this.length - 1)))
+val RawData.data: ByteArray get() = this.sliceArray((8..(8 + this.dataSize- 1)))
 
 
 data class Frame(
