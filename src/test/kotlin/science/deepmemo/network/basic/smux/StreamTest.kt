@@ -11,6 +11,7 @@ import org.junit.Test
 import org.junit.BeforeClass
 import org.mockito.Mockito
 import org.mockito.Mockito.*
+import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.time.Duration
 import kotlin.test.assertEquals
@@ -45,22 +46,6 @@ class StreamTest {
     fun testInput() = runBlocking<Unit>(CommonPool) {
         val session = Session(Config.defaultConfig.copy(maxOpenStream = 4, maxFrameSize = 128, receiveTimeout = Duration.ofSeconds(2)), ByteInputStream(), ByteOutputStream(), true)
         val spySession = spy(session)
-
-        val frameBuf = mutableListOf<Frame>()
-
-        doAnswer {
-            //val frame: Frame = it.getArgument(0)!!
-            val frame = it.arguments[0] as Frame
-            frameBuf.add(frame)
-        }.`when`(spySession).writeFrame(any())
-
-        val f = Frame(version, Command.PSH, 120, byteArrayOf(1,2))
-        spySession.writeFrame(f)
-        spySession.writeFrame(f)
-        spySession.writeFrame(f)
-        assertEquals(3, frameBuf.size)
-
-        frameBuf.clear()
 
         val stream = spySession.openStream()
         assertNotNull(stream)
@@ -103,10 +88,7 @@ class StreamTest {
 
         val baout5 = ByteArray(16) { 0 }
         stream.close()
-        val readcount5 = ins.read(baout5)
-        assertEquals(0, readcount5)
-        val read = ins.read()
-        assertEquals(-1, read)
+        assertEquals(-1, ins.read(baout5))
     }
 
 
@@ -132,9 +114,50 @@ class StreamTest {
         }
         val readcount1 = ins.read(baout1)
         assertEquals(128, readcount1)
+        assertEquals(-1, ins.read(baout1))
+        assertEquals(-1, ins.read())
+    }
+
+    @Test
+    fun testOutput() = runBlocking<Unit>(CommonPool) {
+        val session = Session(Config.defaultConfig.copy(maxOpenStream = 4, maxFrameSize = 128, receiveTimeout = Duration.ofSeconds(2)), ByteInputStream(), ByteOutputStream(), true)
+        val spySession = spy(session)
+
+        val frameBuf = mutableListOf<Frame>()
+
+        doAnswer {
+            //val frame: Frame = it.getArgument(0)!!
+            val frame = it.arguments[0] as Frame
+            frameBuf.add(frame)
+        }.`when`(spySession).writeFrame(any())
+
+
     }
 
 
+    @Test
+    fun testInputStream() {
+        val ba = ByteArray(16) {it.toByte()}
+        val bis1 = ByteArrayInputStream(ba)
+
+        val out = ByteArray(10)
+        assertEquals(10, bis1.read(out))
+        assertEquals(6, bis1.read(out))
+        assertEquals(-1, bis1.read(out))
+
+        val bis2 = ByteArrayInputStream(ba)
+        assertEquals(10, bis2.read(out))
+
+        bis2.close()
+        assertEquals(6, bis2.read(out))
+
+        val bis3 = ByteArrayInputStream(ba)
+        val out2 = ByteArray(8)
+        assertEquals(8, bis3.read(out2))
+        assertEquals(8, bis3.read(out2))
+        assertEquals(-1, bis3.read(out2))
+        assertEquals(-1, bis3.read(out2))
+    }
 
     /*
     @Test

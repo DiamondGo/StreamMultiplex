@@ -10,6 +10,7 @@ import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.nio.file.ClosedFileSystemException
 import java.util.concurrent.TimeoutException
 
 class Stream(
@@ -34,7 +35,7 @@ class Stream(
         override fun read(): Int {
             val ba = ByteArray(1)
             val read = read(ba)
-            return if (read == 0) -1 else ba[0].toInt()
+            return if (read <= 0) -1 else ba[0].toInt()
         }
 
         override fun read(b: ByteArray?): Int {
@@ -70,7 +71,7 @@ class Stream(
                 read += toRead
             }
 
-            return read
+            return if (read > 0) read else -1
         }
 
         suspend private fun getNextFrame() {
