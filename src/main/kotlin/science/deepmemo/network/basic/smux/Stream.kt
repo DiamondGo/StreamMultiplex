@@ -2,6 +2,7 @@ package science.deepmemo.network.basic.smux
 
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.channels.Channel
+import kotlinx.coroutines.experimental.channels.ClosedSendChannelException
 import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.runBlocking
@@ -10,7 +11,6 @@ import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
-import java.nio.file.ClosedFileSystemException
 import java.util.concurrent.TimeoutException
 
 class Stream(
@@ -24,9 +24,7 @@ class Stream(
     /***
      * implement read
      */
-    fun getInputStream(): InputStream {
-        return inStream
-    }
+    fun getInputStream(): InputStream = inStream
 
     private val inStream = object : InputStream() {
         var currentFrame: Frame? = null
@@ -98,11 +96,68 @@ class Stream(
     /***
      * implement write
      */
-    fun getOutputStream(): OutputStream {
-        return outStream
-    }
+    fun getOutputStream(): OutputStream = outStream
 
+    private data class DataPiece(
+            val bytes: ByteArray,
+            val offset: Int,
+            val len: Int
+    )
     private val outStream = object : OutputStream() {
+        private val outgoingData = Channel<DataPiece>()
+        private val sender = launch(CommonPool) {
+            var currentByteArray = ByteArray(this@Stream.session.config.maxFrameSize)
+            var writeIdx = 0
+            var loop = true
+            recvloop@ while (loop) {
+                val timeout = Channel<Any>()
+                launch {
+                    delay(this@Stream.session.config.sendTimeout.toMillis())
+                    timeout.send(Any())
+                }
+                select<Unit> {
+                    die.onReceiveOrNull {
+                        loop = false
+                    }
+                    timeout.onReceive {
+                        //throw TimeoutException("Timeout in receiving")
+                        loop = false
+                    }
+                    outgoingData.onReceiveOrNull {
+                        if (it == null) {
+                            // channel is closed
+                            die.close()
+                            loop = false
+                        } else {
+                            var readIdx = it.offset
+                            writeloop@ while (readIdx < it.offset + it.len) {
+                                val len = minOf(currentByteArray.size - writeIdx, it.len + it.offset - readIdx)
+                                (0 until len).forEach { _ -> currentByteArray[writeIdx++] = it.bytes[readIdx++] }
+
+                                if (writeIdx == currentByteArray.size) {
+                                    // frame filled, send
+                                    val frame = Frame(version, Command.PSH, this@Stream.id, currentByteArray)
+                                    session.writeFrame(frame)
+                                    // change
+                                    currentByteArray = ByteArray(this@Stream.session.config.maxFrameSize)
+                                    writeIdx = 0
+                                }
+
+                                if (readIdx - it.offset == it.len) {
+                                    // this data piece is all flushed
+                                    break@writeloop
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (writeIdx > 0) {
+                // there is incomplete data need to write
+                val frame = Frame(version, Command.PSH, this@Stream.id, currentByteArray.sliceArray(0 until writeIdx))
+                session.writeFrame(frame)
+            }
+        }
 
         override fun write(b: Int) {
             val ba = byteArrayOf(b.toByte())
@@ -114,6 +169,24 @@ class Stream(
                 return
             write(b, 0, b.size )
         }
+
+        override fun write(b: ByteArray?, off: Int, len: Int) {
+            if (b == null || b.isEmpty() || off >= b.size || b.size - off < len)
+                return
+            try {
+                runBlocking(CommonPool) { outgoingData.send(DataPiece(b, off, len)) }
+            } catch (e: ClosedSendChannelException) {
+                throw IOException("Write channel is closed")
+            }
+        }
+
+        override fun close() {
+            outgoingData.close()
+            runBlocking { sender.join() }
+            super.close()
+        }
+
+        /*
 
         override fun write(b: ByteArray?, off: Int, len: Int) {
             val frameSize = this@Stream.session.config.maxFrameSize
@@ -128,6 +201,7 @@ class Stream(
                 runBlocking(CommonPool) { this@Stream.session.writeFrame(frame) }
             }
         }
+        */
     }
 
     suspend fun close() {
@@ -140,8 +214,6 @@ class Stream(
             default.onReceive {
                 // send fin
                 this@Stream.die.close()
-                val finFrame = Frame(version, Command.FIN, this@Stream.id, byteArrayOf())
-                this@Stream.session.writeFrame(finFrame)
             }
         }
     }

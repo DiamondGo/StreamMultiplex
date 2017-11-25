@@ -2,6 +2,8 @@ package science.deepmemo.network.basic.smux
 
 import org.junit.Test
 import org.junit.BeforeClass
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import kotlin.test.*
 
 class FrameTest {
@@ -33,6 +35,31 @@ class FrameTest {
         assertEquals(1 + (2 shl 8) + (3 shl 16) + (4 shl 24), frame.streamId)
         assertEquals(3, frame.data.size)
         assertEquals(100, frame.data[1])
+    }
 
+    @Test
+    fun testReadWrite() {
+        val output = ByteArrayOutputStream()
+        val frame1 = Frame(version, Command.PSH, 0, byteArrayOf(1,2,3,4))
+        frame1.writeTo(output)
+        val frame3 = Frame(version, Command.FIN, 99, byteArrayOf())
+        frame3.writeTo(output)
+
+        val ba = output.toByteArray()
+        assertEquals(8 + frame1.data.size + 8, ba.size)
+
+        val input = ByteArrayInputStream(ba)
+        val frame2 = Frame.readFrom(input)
+
+        assertEquals(frame1.version, frame2.version)
+        assertEquals(frame1.command, frame2.command)
+        assertEquals(frame1.streamId, frame2.streamId)
+        assertEquals(frame1.data.size, frame2.data.size)
+        (0 until frame1.data.size).forEach { assertEquals(frame1.data[it], frame2.data[it]) }
+
+        val frame4 = Frame.readFrom(input)
+        assertEquals(frame3.version, frame4.version)
+        assertEquals(frame3.command, frame4.command)
+        assertEquals(frame3.streamId, frame4.streamId)
     }
 }

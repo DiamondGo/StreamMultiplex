@@ -1,8 +1,10 @@
 package science.deepmemo.network.basic.smux
 
+import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.CompletableDeferred
 import java.io.IOException
 import kotlinx.coroutines.experimental.channels.*
+import kotlinx.coroutines.experimental.launch
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -22,6 +24,8 @@ class Session (
         val outputStream: OutputStream,
         val isClient: Boolean
 ) {
+    private val die = Channel<Any>()
+    private val newStream = Channel<Stream>(1)
 
     /***
      * OpenStream is used to create a new stream.
@@ -32,15 +36,20 @@ class Session (
 
         val response = CompletableDeferred<Stream?>()
         streamManager.send(StreamMsg.Allocate(response))
-        return response.await()
+        val stream = response.await()
+        if (stream != null) {
+            val frame = Frame(version, Command.SYN, stream.id, byteArrayOf())
+            writeFrame(frame)
+        }
+        return stream
     }
 
     /***
      * AcceptStream is used to block until the next available stream
      * is ready to be accepted.
      */
-    fun acceptStream(): Stream {
-        return Stream(0, this)
+    suspend fun acceptStream(): Stream {
+        return newStream.receive()
     }
 
     suspend fun close() {
@@ -81,7 +90,7 @@ class Session (
     /***
      * recvLoop keeps on reading from underlying connection if tokens are available
      */
-    private fun recvLoop() {
+    private val recvLoop = launch(CommonPool) {
 
     }
 
@@ -92,16 +101,17 @@ class Session (
 
     }
 
-    private fun sendLoop() {
+    private val sendLoop = launch(CommonPool) {
 
     }
+
 
     /***
      * writeFrame writes the frame to the underlying connection
      * and returns the number of bytes written if successful
      */
     fun writeFrame(frame: Frame) {
-
+        println("write frame data size ${frame.data.size}")
     }
 
     sealed class StreamMsg {
@@ -132,10 +142,18 @@ class Session (
                     }
                 }
                 is StreamMsg.GetById -> msg.response.complete(streamMap[msg.streamId])
-                is StreamMsg.Free -> streamMap.remove(msg.stream.id)
-                is StreamMsg.CloseAll -> {
-                    for ((_, stream) in streamMap)
+                is StreamMsg.Free -> {
+                    val stream = streamMap.remove(msg.stream.id)
+                    if (stream != null) {
                         stream.close()
+                        writeFrame(Frame(version, Command.FIN, stream.id, byteArrayOf()))
+                    }
+                }
+                is StreamMsg.CloseAll -> {
+                    for ((_, stream) in streamMap) {
+                        stream.close()
+                        writeFrame(Frame(version, Command.FIN, stream.id, byteArrayOf()))
+                    }
                     streamMap.clear()
                 }
             }

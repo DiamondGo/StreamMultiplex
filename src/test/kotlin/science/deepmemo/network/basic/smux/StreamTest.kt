@@ -3,7 +3,10 @@ package science.deepmemo.network.basic.smux
 //import com.nhaarman.mockito_kotlin.*
 import com.sun.xml.internal.messaging.saaj.util.ByteInputStream
 import com.sun.xml.internal.messaging.saaj.util.ByteOutputStream
+import com.sun.xml.internal.ws.util.ByteArrayBuffer
 import kotlinx.coroutines.experimental.CommonPool
+import kotlinx.coroutines.experimental.channels.Channel
+import kotlinx.coroutines.experimental.channels.ClosedSendChannelException
 import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.runBlocking
@@ -12,7 +15,9 @@ import org.junit.BeforeClass
 import org.mockito.Mockito
 import org.mockito.Mockito.*
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.nio.ByteBuffer
 import java.time.Duration
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -120,7 +125,7 @@ class StreamTest {
 
     @Test
     fun testOutput() = runBlocking<Unit>(CommonPool) {
-        val session = Session(Config.defaultConfig.copy(maxOpenStream = 4, maxFrameSize = 128, receiveTimeout = Duration.ofSeconds(2)), ByteInputStream(), ByteOutputStream(), true)
+        val session = Session(Config.defaultConfig.copy(maxOpenStream = 4, maxFrameSize = 128, sendTimeout = Duration.ofSeconds(300)), ByteInputStream(), ByteOutputStream(), true)
         val spySession = spy(session)
 
         val frameBuf = mutableListOf<Frame>()
@@ -132,8 +137,34 @@ class StreamTest {
         }.`when`(spySession).writeFrame(any())
 
 
+        val ba = ByteArray(300) { it.toByte() }
+        assertEquals(299 % 128, ba[299])
+
+        val stream = spySession.openStream()
+
+        val outs = stream!!.getOutputStream()
+
+        outs.write(ba)
+        outs.write(35)
+
+        // TODO when writeFrame is done, finish this
+
+        delay(3000)
+        outs.close()
+        delay(1000)
+        //assertEquals(3, frameBuf.size)
     }
 
+
+    @Test
+    fun testByteBuffer() = runBlocking<Unit>(CommonPool) {
+        val buf = ByteArrayBuffer(1024)
+        (0 until 32).forEach({buf.write(it)})
+        assertEquals(32, buf.size())
+        val ba = buf.toByteArray()
+        assertEquals(32, ba.size)
+        assertEquals(15, ba[15])
+    }
 
     @Test
     fun testInputStream() {
@@ -157,6 +188,31 @@ class StreamTest {
         assertEquals(8, bis3.read(out2))
         assertEquals(-1, bis3.read(out2))
         assertEquals(-1, bis3.read(out2))
+    }
+
+    @Test
+    fun testOutputStream() = runBlocking<Unit> {
+        val ba1 = ByteArray(16) {it.toByte()}
+        val bos1 = ByteArrayOutputStream()
+
+        bos1.write(ba1, 4, 4)
+        val boa1 = bos1.toByteArray()
+        (0 until 4).forEach { assertEquals(ba1[4+it], boa1[it]) }
+        assertEquals(4, bos1.toByteArray().size)
+        bos1.write(0)
+        assertEquals(5, bos1.toByteArray().size)
+
+        val strChn = Channel<String>()
+        launch {
+            assertEquals("hello", strChn.receive())
+        }
+        strChn.send("hello")
+
+        strChn.close()
+
+        assertFailsWith<ClosedSendChannelException> {
+            runBlocking { strChn.send("world") }
+        }
     }
 
     /*

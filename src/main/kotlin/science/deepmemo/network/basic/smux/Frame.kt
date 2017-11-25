@@ -1,7 +1,11 @@
 package science.deepmemo.network.basic.smux
 
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.*
 
 val version: Byte = 1
 
@@ -50,5 +54,40 @@ data class Frame(
             command = raw.command,
             streamId = raw.streamId,
             data = raw.data)
+
+    fun writeTo(os: OutputStream) {
+        val buf = ByteBuffer.allocate(8)
+        buf.order(ByteOrder.LITTLE_ENDIAN)
+                .put(version)
+                .put(command.value)
+                .putShort(data.size.toShort())
+                .putInt(streamId)
+        os.write(buf.array())
+        if (data.isNotEmpty())
+            os.write(data)
+    }
+
+    companion object {
+        fun readFrom(ins: InputStream): Frame {
+            val header = ByteArray(8)
+            if (ins.read(header) != 8)
+                throw IOException("corrupt data")
+            if (header.version != version)
+                throw InputMismatchException("version mismatch, expect $version, actual ${header.version}")
+            if (header.dataSize > 0) {
+            }
+            return when {
+                header.dataSize > 0 -> {
+                    val data = ByteArray(header.dataSize)
+                    val dataSize = ins.read(data)
+                    if (dataSize != header.dataSize)
+                        throw InputMismatchException("dataSize not match, expect ${header.dataSize}, actual $dataSize")
+                    Frame(header.version, header.command, header.streamId, data)
+                }
+                header.dataSize == 0 -> Frame(header.version, header.command, header.streamId, byteArrayOf())
+                else -> throw IOException("invalid dataSize ${header.dataSize}")
+            }
+        }
+    }
 }
 
