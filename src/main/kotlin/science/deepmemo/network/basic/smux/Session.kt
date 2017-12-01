@@ -4,7 +4,9 @@ import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.CompletableDeferred
 import java.io.IOException
 import kotlinx.coroutines.experimental.channels.*
+import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.selects.select
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -91,7 +93,21 @@ class Session (
      * recvLoop keeps on reading from underlying connection if tokens are available
      */
     private val recvLoop = launch(CommonPool) {
+        while (true) {
+            val timeout = Channel<Any>()
+            launch {
+                delay(config.keepAliveTimeout.toMillis())
+                timeout.send(Any())
+            }
+            select<Unit> {
+                die.onReceiveOrNull {
 
+                }
+                timeout.onReceive {
+
+                }
+            }
+        }
     }
 
     /***
