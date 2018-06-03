@@ -3,13 +3,13 @@ package science.deepmemo.network.basic.smux
 import com.sun.xml.internal.messaging.saaj.util.ByteInputStream
 import com.sun.xml.internal.messaging.saaj.util.ByteOutputStream
 import kotlinx.coroutines.experimental.CommonPool
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.runBlocking
-import org.junit.Test
 import org.junit.BeforeClass
-import java.io.IOException
-import kotlin.test.*
+import org.junit.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class SessionTest {
     companion object {

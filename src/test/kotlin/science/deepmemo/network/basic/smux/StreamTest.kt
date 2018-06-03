@@ -1,6 +1,5 @@
 package science.deepmemo.network.basic.smux
 
-//import com.nhaarman.mockito_kotlin.*
 import com.sun.xml.internal.messaging.saaj.util.ByteInputStream
 import com.sun.xml.internal.messaging.saaj.util.ByteOutputStream
 import com.sun.xml.internal.ws.util.ByteArrayBuffer
@@ -10,31 +9,40 @@ import kotlinx.coroutines.experimental.channels.ClosedSendChannelException
 import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.runBlocking
+import org.junit.AfterClass
 import org.junit.Test
 import org.junit.BeforeClass
 import org.mockito.Mockito
 import org.mockito.Mockito.*
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.IOException
-import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 import java.time.Duration
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 
-/*
-import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito
-import org.mockito.Mockito.doAnswer
-import org.mockito.Mockito.mock
-*/
 
 class StreamTest {
     companion object {
-        @JvmStatic
-        @BeforeClass
-        fun init() {
+        @JvmStatic @BeforeClass fun init() {
+        }
+
+        @BeforeClass @JvmStatic fun setup() {
+            // things to execute once and keep around for the class
+            val configDir = File("src/test/resources/mockito-extensions")
+            if (!configDir.exists())
+                configDir.mkdirs()
+            val configFile = File(configDir, "org.mockito.plugins.MockMaker")
+            if (!configFile.exists())
+                configFile.createNewFile()
+            configFile.writeText("mock-maker-inline", StandardCharsets.UTF_8)
+        }
+
+        @AfterClass @JvmStatic fun teardown() {
+            // clean up after this class, leave nothing dirty behind
         }
     }
 
