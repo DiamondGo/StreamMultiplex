@@ -30,6 +30,7 @@ data class Config(
     }
 }
 
+/*
 fun server(input: InputStream, output: OutputStream, config: Config = Config.defaultConfig): Session {
     return Session(config, input, output, false)
 }
@@ -37,3 +38,4 @@ fun server(input: InputStream, output: OutputStream, config: Config = Config.def
 fun client(input: InputStream, output: OutputStream, config: Config = Config.defaultConfig): Session {
     return Session(config, input, output, true)
 }
+*/

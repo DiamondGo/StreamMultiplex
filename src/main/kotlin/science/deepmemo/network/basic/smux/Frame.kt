@@ -13,7 +13,8 @@ enum class Command(val value: Byte) {
     SYN(0),
     FIN(1),
     PSH(2),
-    NOP(3);
+    NOP(3),
+    CLZ(4);
 
     companion object {
         private val map = Command.values().associateBy(Command::value);

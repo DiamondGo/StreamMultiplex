@@ -1,11 +1,8 @@
 package science.deepmemo.network.basic.smux
 
-import kotlinx.coroutines.experimental.CommonPool
-import kotlinx.coroutines.experimental.CompletableDeferred
+import kotlinx.coroutines.experimental.*
 import java.io.IOException
 import kotlinx.coroutines.experimental.channels.*
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.selects.select
 import java.io.InputStream
 import java.io.OutputStream
@@ -21,10 +18,7 @@ data class WriteResult(
 )
 
 class Session (
-        val config: Config,
-        val inputStream: InputStream,
-        val outputStream: OutputStream,
-        val isClient: Boolean
+        val config: Config
 ) {
     private val die = Channel<Any>()
     private val newStream = Channel<Stream>(1)
@@ -44,6 +38,26 @@ class Session (
             writeFrame(frame)
         }
         return stream
+    }
+
+    private val inputFrames = Channel<Frame>(config.maxFrame)
+    fun setInputStream(inputStream: InputStream): Unit {
+        val rloop = launch(CommonPool) {
+            while (true) {
+                val frame = Frame.readFrom(inputStream)
+                inputFrames.send(frame)
+            }
+        }
+    }
+
+    private val outputFrames = Channel<Frame>(config.maxFrame)
+    fun setOutputStream(outputStream: OutputStream): Unit {
+        val wloop = launch(CommonPool) {
+            while (true) {
+                val frame = outputFrames.receive()
+                frame.writeTo(outputStream)
+            }
+        }
     }
 
     /***
@@ -94,18 +108,26 @@ class Session (
      */
     private val recvLoop = launch(CommonPool) {
         while (true) {
-            val timeout = Channel<Any>()
-            launch {
-                delay(config.keepAliveTimeout.toMillis())
-                timeout.send(Any())
-            }
-            select<Unit> {
-                die.onReceiveOrNull {
+            try {
+                withTimeout(config.keepAliveInterval.toMillis()) {
+                    select<Unit> {
+                        die.onReceiveOrNull {
 
+                        }
+                        inputFrames.onReceive {
+                            val frame = inputFrames.receive()
+                            when (frame.command) {
+                                Command.CLZ -> TODO("Close session")
+                                Command.FIN -> TODO("Close stream")
+                                Command.SYN -> TODO("New session")
+                                Command.PSH -> TODO("Data incoming")
+                                Command.NOP -> {} // do nothing, just refresh timeout
+                            }
+                        }
+                    }
                 }
-                timeout.onReceive {
-
-                }
+            } catch (e : TimeoutCancellationException) {
+                TODO("Connection timeout")
             }
         }
     }

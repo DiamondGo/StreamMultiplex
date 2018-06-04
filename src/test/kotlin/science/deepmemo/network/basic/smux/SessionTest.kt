@@ -6,6 +6,7 @@ import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.runBlocking
 import org.junit.BeforeClass
 import org.junit.Test
+import java.io.ByteArrayInputStream
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -43,4 +44,9 @@ class SessionTest {
         assertNotNull(session.openStream())
         assertNull(session.openStream())
     }
+
+    @Test
+    fun testMultiStream() {
+    }
+
 }
