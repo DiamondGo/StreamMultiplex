@@ -23,7 +23,7 @@ class SessionTest {
     @Test
     fun testStreamManage() = runBlocking<Unit>(CommonPool) {
         val config = Config.defaultConfig.copy(maxOpenStream = 3)
-        val session = Session(config, ByteInputStream(), ByteOutputStream(), false)
+        val session = Session(config)
         val s1 = session.openStream()!!
         val s2 = session.openStream()!!
         val s3 = session.openStream()!!

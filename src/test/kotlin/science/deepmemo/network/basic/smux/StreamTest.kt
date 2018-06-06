@@ -57,7 +57,7 @@ class StreamTest {
 
     @Test
     fun testInput() = runBlocking<Unit>(CommonPool) {
-        val session = Session(Config.defaultConfig.copy(maxOpenStream = 4, maxFrameSize = 128, receiveTimeout = Duration.ofSeconds(2)), ByteInputStream(), ByteOutputStream(), true)
+        val session = Session(Config.defaultConfig.copy(maxOpenStream = 4, maxFrameSize = 128, receiveTimeout = Duration.ofSeconds(2)))
         val spySession = spy(session)
 
         val stream = spySession.openStream()
@@ -107,7 +107,7 @@ class StreamTest {
 
     @Test
     fun testInputIncomplete() = runBlocking<Unit>(CommonPool) {
-        val session = Session(Config.defaultConfig.copy(maxOpenStream = 4, maxFrameSize = 128, receiveTimeout = Duration.ofSeconds(2)), ByteInputStream(), ByteOutputStream(), true)
+        val session = Session(Config.defaultConfig.copy(maxOpenStream = 4, maxFrameSize = 128, receiveTimeout = Duration.ofSeconds(2)))
         val spySession = spy(session)
 
         val stream = spySession.openStream()
@@ -133,7 +133,7 @@ class StreamTest {
 
     @Test
     fun testOutput() = runBlocking<Unit>(CommonPool) {
-        val session = Session(Config.defaultConfig.copy(maxOpenStream = 4, maxFrameSize = 128, sendTimeout = Duration.ofSeconds(300)), ByteInputStream(), ByteOutputStream(), true)
+        val session = Session(Config.defaultConfig.copy(maxOpenStream = 4, maxFrameSize = 128, sendTimeout = Duration.ofSeconds(300)))
         val spySession = spy(session)
 
         val frameBuf = mutableListOf<Frame>()
