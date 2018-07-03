@@ -4,6 +4,7 @@ import kotlinx.coroutines.experimental.*
 import java.io.IOException
 import kotlinx.coroutines.experimental.channels.*
 import kotlinx.coroutines.experimental.selects.select
+import science.deepmemo.utils.logger
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -22,6 +23,7 @@ class Session (
 ) {
     private val die = Channel<Any>()
     private val newStream = Channel<Stream>(1)
+    private val log = logger()
 
     /***
      * OpenStream is used to create a new stream.
@@ -38,6 +40,15 @@ class Session (
             writeFrame(frame)
         }
         return stream
+    }
+
+    private suspend fun receiveNewStream(steamId: Int): Stream? {
+        if (this.isClosed())
+            throw IOException("Session is closed")
+
+        val response = CompletableDeferred<Stream?>()
+        streamManager.send(StreamMsg.Preserve(steamId, response))
+        return response.await()
     }
 
     private val inputFrames = Channel<Frame>(config.maxFrame)
@@ -119,7 +130,10 @@ class Session (
                             when (frame.command) {
                                 Command.CLZ -> TODO("Close session")
                                 Command.FIN -> TODO("Close stream")
-                                Command.SYN -> TODO("New session")
+                                Command.SYN -> {
+                                    val stream = receiveNewStream(frame.streamId)
+                                    stream ?: log.error { "No stream has id %d".format(frame.streamId) }
+                                }
                                 Command.PSH -> TODO("Data incoming")
                                 Command.NOP -> {} // do nothing, just refresh timeout
                             }
@@ -149,13 +163,14 @@ class Session (
      * and returns the number of bytes written if successful
      */
     fun writeFrame(frame: Frame) {
-        println("write frame data size ${frame.data.size}")
+        log.info { "write frame data size ${frame.data.size}" }
     }
 
     sealed class StreamMsg {
         object CloseAll : StreamMsg()
         class GetCount(val response: CompletableDeferred<Int>) : StreamMsg()
         class Allocate(val response: CompletableDeferred<Stream?>) : StreamMsg()
+        class Preserve(val streamId: Int, val response: CompletableDeferred<Stream?>) : StreamMsg()
         class GetById(val streamId: Int, val response: CompletableDeferred<Stream?>) : StreamMsg()
         class Free(val stream: Stream) : StreamMsg()
     }
@@ -176,6 +191,15 @@ class Session (
                             curStreamId = ((curStreamId.toLong() + 1L) % config.maxOpenStream.toLong()).toInt() // in case maxOpenStream is Int.MAX_VALUE
                         val stream = Stream(id = curStreamId, session = this@Session)
                         streamMap += curStreamId to stream
+                        msg.response.complete(stream)
+                    }
+                }
+                is StreamMsg.Preserve -> {
+                    if (streamMap.containsKey(msg.streamId)) {
+                        msg.response.complete(null)
+                    } else {
+                        val stream = Stream(id = msg.streamId, session = this@Session)
+                        streamMap += msg.streamId to stream
                         msg.response.complete(stream)
                     }
                 }
