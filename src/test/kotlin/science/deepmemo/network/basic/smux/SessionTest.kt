@@ -4,6 +4,7 @@ import com.sun.xml.internal.messaging.saaj.util.ByteInputStream
 import com.sun.xml.internal.messaging.saaj.util.ByteOutputStream
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.runBlocking
+import org.junit.Assert
 import org.junit.BeforeClass
 import org.junit.Test
 import java.io.ByteArrayInputStream
@@ -20,8 +21,7 @@ class SessionTest {
         }
     }
 
-    @Test
-    fun testStreamManage() = runBlocking<Unit>(CommonPool) {
+    @Test fun testStreamManage() = runBlocking<Unit>(CommonPool) {
         val config = Config.defaultConfig.copy(maxOpenStream = 3)
         val session = Session(config)
         val s1 = session.openStream()!!
@@ -45,8 +45,22 @@ class SessionTest {
         assertNull(session.openStream())
     }
 
-    @Test
-    fun testMultiStream() {
-    }
+    @Test fun testMultiStream() {
 
+        println("haah")
+        val pipe = PipeStream()
+        val inputStream = pipe.getInput()
+        val outputStream = pipe.getOutput()
+
+        val inputSession = Session(Config.defaultConfig.copy())
+        inputSession.setInputStream(inputStream)
+
+        val outputSession = Session(Config.defaultConfig.copy())
+        outputSession.setOutputStream(outputStream);
+
+        val randomDataMap = (0..255).map {Pair(it, 13)}.toMap()
+
+        println("haah")
+        println(randomDataMap)
+    }
 }

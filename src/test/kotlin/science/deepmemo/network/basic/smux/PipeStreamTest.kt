@@ -7,8 +7,7 @@ import org.junit.Test
 import java.util.*
 
 class PipeStreamTest {
-    @Test
-    fun testPipeStream() {
+    @Test fun testPipeStream() {
         val pipeStream = PipeStream()
         val inputStream = pipeStream.getInput()
         val outputStream = pipeStream.getOutput()
@@ -27,9 +26,5 @@ class PipeStreamTest {
             inRun.join()
             outRun.join()
         }
-    }
-
-    @Test fun testRange() {
-        (0 until 9).forEach { println(it) }
     }
 }
