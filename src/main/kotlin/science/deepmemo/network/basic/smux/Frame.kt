@@ -89,6 +89,14 @@ data class Frame(
                 else -> throw IOException("invalid dataSize ${header.dataSize}")
             }
         }
+
+        fun finFrame(streamId: Int): Frame {
+            return Frame(version, Command.FIN, streamId, byteArrayOf())
+        }
+
+        fun closeFrame(): Frame {
+            return Frame(version, Command.CLZ, 0, byteArrayOf())
+        }
     }
 }
 

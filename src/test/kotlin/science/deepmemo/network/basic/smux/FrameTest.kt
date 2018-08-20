@@ -14,8 +14,7 @@ class FrameTest {
         }
     }
 
-    @Test
-    fun testRawData() {
+    @Test fun testRawData() {
         val bytes = byteArrayOf(version, Command.SYN.value,
                 3, 0, // length
                 1, 2, 3, 4, // streamId
@@ -37,8 +36,7 @@ class FrameTest {
         assertEquals(100, frame.data[1])
     }
 
-    @Test
-    fun testReadWrite() {
+    @Test fun testReadWrite() {
         val output = ByteArrayOutputStream()
         val frame1 = Frame(version, Command.PSH, 0, byteArrayOf(1,2,3,4))
         frame1.writeTo(output)
@@ -61,5 +59,19 @@ class FrameTest {
         assertEquals(frame3.version, frame4.version)
         assertEquals(frame3.command, frame4.command)
         assertEquals(frame3.streamId, frame4.streamId)
+    }
+
+    @Test fun testSpecialFrame() {
+        val finFrame = Frame.finFrame(100)
+        assertEquals(version, finFrame.version)
+        assertEquals(Command.FIN, finFrame.command)
+        assertEquals(100, finFrame.streamId)
+        assertEquals(0, finFrame.data.size)
+
+        val closeFrame = Frame.closeFrame()
+        assertEquals(version, closeFrame.version)
+        assertEquals(Command.CLZ, closeFrame.command)
+        assertEquals(0, closeFrame.streamId)
+        assertEquals(0, closeFrame.data.size)
     }
 }

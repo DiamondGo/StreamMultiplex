@@ -37,7 +37,7 @@ class PipeStream {
                 try {
                     runBlocking<Unit> { byteChannel.send(b.toByte()) }
                 } catch (e : ClosedSendChannelException) {
-                    throw IOException("Stream closed")
+                    throw IOException("StreamOld closed")
                 }
             }
 
