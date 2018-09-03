@@ -1,5 +1,6 @@
 package science.deepmemo.network.basic.smux
 
+import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -71,8 +72,11 @@ data class Frame(
     companion object {
         fun readFrom(ins: InputStream): Frame {
             val header = ByteArray(8)
-            if (ins.read(header) != 8)
-                throw IOException("corrupt data")
+            val read = ins.read(header)
+            when {
+                read == -1 -> throw EOFException("EOF reached.")
+                read != 8 -> throw IOException("corrupt data")
+            }
             if (header.version != version)
                 throw InputMismatchException("version mismatch, expect $version, actual ${header.version}")
             if (header.dataSize > 0) {

@@ -11,7 +11,8 @@ data class Config(
         val maxReceiveBuffer: Int,
         val maxOpenStream: Int,
         val maxFrameQueueSize: Int,
-        val maxStreamFrame: Int
+        val maxStreamFrame: Int,
+        val dedicatedThread: Int
 ) {
     companion object {
         val defaultConfig = Config(
@@ -23,7 +24,8 @@ data class Config(
                 maxReceiveBuffer = 4194304, // 4MB
                 maxOpenStream = 1048576, // 2**20, should be enough
                 maxFrameQueueSize = 1024,
-                maxStreamFrame = 32 // each stream will have this most frames in buffer
+                maxStreamFrame = 32, // each stream will have this most frames in buffer
+                dedicatedThread = 0
         )
     }
 }

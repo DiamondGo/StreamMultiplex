@@ -1,53 +1,95 @@
 package science.deepmemo.network.basic.smux
 
-import kotlinx.coroutines.experimental.CommonPool
+import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.Channel
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.runBlocking
-import kotlinx.coroutines.experimental.withTimeout
+import mu.KotlinLogging
 import science.deepmemo.utils.logger
+import java.io.EOFException
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.SocketException
 
 abstract class StreamManager(val config: Config, val input: InputStream, val output: OutputStream) {
     protected val log = logger()
     protected var curStreamId = 0
     protected val streamMap = mutableMapOf<Int, Stream>()
-    protected val readFrameQueue = Channel<Frame>(config.maxFrameQueueSize)
     protected val writeFrameQueue = Channel<Frame>(config.maxFrameQueueSize)
-    protected val synFrameQueue = Channel<Frame>(config.maxFrameQueueSize)
+    //protected val synFrameQueue = Channel<Frame>(config.maxFrameQueueSize)
+    protected val newStreamQueue = Channel<Stream>(config.maxOpenStream)
+    protected var recvEnable = true
 
-    protected val recvLoop = launch(CommonPool) {
-        while (!readFrameQueue.isClosedForSend) {
-            //withTimeout(config.keepAliveInterval.toMillis()) {
-            val frame = Frame.readFrom(input)
-            when (frame.command) {
-                Command.SYN -> synFrameQueue.send(frame) // only in server
-                Command.FIN -> {
-                    val stream = synchronized(this@StreamManager.streamMap) {
-                        this@StreamManager.streamMap.remove(frame.streamId)
+    protected val coroutineContex = if (config.dedicatedThread == 0) CommonPool else newFixedThreadPoolContext(2, "hehe")
+
+    protected val recvLoop = launch(coroutineContex) {
+        try {
+            while (recvEnable) {
+                //withTimeout(config.keepAliveInterval.toMillis())
+                val frame = Frame.readFrom(input)
+                when (frame.command) {
+                    Command.SYN -> {
+                        log.debug { "receive SYN frame id ${frame.streamId}" }
+                        //synFrameQueue.send(frame) // only in server
+                        val stream = synchronized(this@StreamManager.streamMap) {
+                            if (frame.streamId in this@StreamManager.streamMap) {
+                                log.error { "There are already a Stream with id ${frame.streamId}" }
+                                TODO("Send back message about conflict detected")
+                                null
+                            } else {
+                                val stream = Stream(frame.streamId, this@StreamManager)
+                                streamMap += frame.streamId to stream
+                                stream
+                            }
+                        }
+                        stream?.let { newStreamQueue.send(stream) }
+                        log.debug { "Stream id ${frame.streamId} is accepted" }
                     }
-                    stream ?: log.error { "no stream with id ${frame.streamId} needs to be closed" }
-                    stream?.close()
-                }
-                Command.CLZ -> TODO()
-                Command.PSH -> {
-                    val stream = synchronized(this@StreamManager.streamMap) {
-                        this@StreamManager.streamMap[frame.streamId]
+                    Command.FIN -> {
+                        log.debug { "receive FIN frame id ${frame.streamId}" }
+                        val stream = synchronized(this@StreamManager.streamMap) {
+                            this@StreamManager.streamMap[frame.streamId]
+                        }
+                        stream ?: log.error { "no stream with id ${frame.streamId} needs to be closed" }
+                        stream?.stopReceiving()
+                        stream?.let { checkReleaseStream(it) }
                     }
-                    stream ?: log.error { "no stream with id ${frame.streamId} is currently receiving" }
-                    stream?.receive(frame)
+                    Command.CLZ -> TODO()
+                    Command.PSH -> {
+                        log.debug { "receive PSH frame id ${frame.streamId}, size ${frame.data.size}" }
+                        val stream = synchronized(this@StreamManager.streamMap) {
+                            this@StreamManager.streamMap[frame.streamId]
+                        }
+                        stream ?: log.error { "no stream with id ${frame.streamId} is currently receiving" }
+                        stream?.receive(frame)
+                    }
+                    Command.NOP -> TODO()
                 }
-                Command.NOP -> TODO()
             }
+        } catch (e: Exception) {
+            when (e) {
+                is EOFException -> log.info { "Remote stream closed" }
+                is SocketException -> log.info { "Socket closed" }
+                is IOException -> log.error { "Stream data corrupted" }
+            }
+            this@StreamManager.suddenDeath()
         }
     }
 
-    protected val sendLoop = launch(CommonPool) {
+    protected fun suddenDeath() {
+        // clear all resources without sending data
+        recvEnable = false
+        synchronized(streamMap) {
+            streamMap.forEach {
+                it.value.stopReceiving()
+            }
+            streamMap.clear()
+        }
+    }
+
+    protected val sendLoop = launch(coroutineContex) {
         while (!writeFrameQueue.isClosedForReceive) {
             val frame = writeFrameQueue.receiveOrNull()
             frame?.let {
-                log.info { "write ${frame.command.toString()} output" }
                 it.writeTo(output)
             }
         }
@@ -58,25 +100,25 @@ abstract class StreamManager(val config: Config, val input: InputStream, val out
             writeFrameQueue.send(frame)
         }
     }
+
+    fun checkReleaseStream(stream: Stream) {
+        if (stream.isReceivingStopped && stream.isSendingStopped) {
+            synchronized(streamMap) {
+                streamMap.remove(stream.id)
+            }
+        }
+    }
 }
 
 class StreamServer(config: Config, input: InputStream, output: OutputStream) : StreamManager(config, input, output) {
     fun accept(): Stream {
-        val frame = runBlocking { synFrameQueue.receiveOrNull() } ?: throw StreamClosedException("Stream closed")
-        val stream = synchronized(this.streamMap) {
-            if (this.streamMap.containsKey(frame.streamId)) {
-                throw StreamIdOccupied("Stream id occupied")
-            }
-            val stream = Stream(frame.streamId, this)
-            streamMap += frame.streamId to stream
-            stream
-        }
-        log.debug { "Stream id $curStreamId is accepted" }
+        val stream = runBlocking { newStreamQueue.receiveOrNull() } ?: throw ShutdownException("Peer closed, no more Stream")
+        log.debug { "Stream id ${stream.id} is accepted" }
         return stream
     }
 }
 
-class StreamClient(config: Config, input: InputStream, output: OutputStream) : StreamManager(config, input, output){
+class StreamClient(config: Config, input: InputStream, output: OutputStream) : StreamManager(config, input, output) {
 
 
     fun open(): Stream? {

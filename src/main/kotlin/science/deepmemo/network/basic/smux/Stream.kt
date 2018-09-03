@@ -9,22 +9,15 @@ import kotlin.math.min
 
 class Stream(val id: Int, val manager: StreamManager) {
     private val incomingFrames = Channel<Frame>(manager.config.maxStreamFrame)
-    private var closed = false
-    private var inSteamClosed = false
-    private var outStreamClosed = false
 
-    fun close() {
-        if (!closed) {
-            closeStream()
-            closed = true
-        }
+    fun forceClose() {
+        stopReceiving()
+        outStream.close()
     }
-    val isClosed = closed
-
-    private fun closeStream() {
-        manager.writeFrame(Frame.finFrame(id))
+    fun stopReceiving() {
         incomingFrames.close()
     }
+    val isReceivingStopped get() = incomingFrames.isClosedForSend
 
     suspend fun receive(frame: Frame) {
         incomingFrames.send(frame)
@@ -39,7 +32,7 @@ class Stream(val id: Int, val manager: StreamManager) {
         override fun read(): Int {
             val ba = ByteArray(1)
             val read = read(ba)
-            return if (read <= 0) -1 else ba[0].toInt()
+            return if (read <= 0) -1 else (ba[0].toInt() and 0xff)
         }
 
         override fun read(b: ByteArray?): Int {
@@ -89,10 +82,6 @@ class Stream(val id: Int, val manager: StreamManager) {
         }
 
         override fun close() {
-            inSteamClosed = true
-            if (outStreamClosed) {
-                this@Stream.close()
-            }
         }
 
     }
@@ -100,6 +89,8 @@ class Stream(val id: Int, val manager: StreamManager) {
     fun getOutputStream(): OutputStream = outStream
 
     private val outStream = object : OutputStream() {
+        private var closed = false
+
         override fun write(b: Int) {
             val ba = byteArrayOf(b.toByte())
             write(ba, 0, ba.size)
@@ -127,11 +118,15 @@ class Stream(val id: Int, val manager: StreamManager) {
         }
 
         override fun close() {
-            outStreamClosed = true
-            if (inSteamClosed) {
-                this@Stream.close()
+            if (!closed) {
+                closed = true
+                manager.writeFrame(Frame.finFrame(this@Stream.id))
             }
+            manager.checkReleaseStream(this@Stream)
         }
+
+        val isClosed get() = closed
     }
+    val isSendingStopped get() = outStream.isClosed
 }
 

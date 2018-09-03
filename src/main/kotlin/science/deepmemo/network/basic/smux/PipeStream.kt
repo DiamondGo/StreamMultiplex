@@ -7,6 +7,7 @@ import kotlinx.coroutines.experimental.runBlocking
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import kotlin.experimental.and
 
 class PipeStream {
     companion object {
@@ -20,7 +21,8 @@ class PipeStream {
         return object : InputStream() {
             override fun read(): Int {
                 return try {
-                    runBlocking<Byte> { byteChannel.receive() }.toInt()
+                    val b = runBlocking<Byte> { byteChannel.receive() }
+                    b.toInt() and 0xff
                 } catch (e : Exception) {
                     when(e) {
                         is ClosedReceiveChannelException -> -1

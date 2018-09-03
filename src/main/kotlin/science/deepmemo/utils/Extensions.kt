@@ -13,5 +13,5 @@ fun <R : Any> R.logger(): Lazy<Logger> {
 */
 
 fun <R : Any> R.logger(): KLogger =
-        KotlinLogging.logger {}
+        KotlinLogging.logger(this::class.java.name)
 

@@ -1,6 +1,6 @@
 
 buildscript {
-    ext.kotlin_version = '1.2.60'
+    ext.kotlin_version = '1.2.61'
     ext.dagger_version = '2.16'
 
     repositories {
@@ -43,7 +43,7 @@ dependencies {
     testCompile "org.jetbrains.kotlin:kotlin-test"
     testCompile "org.jetbrains.kotlin:kotlin-test-junit"
 
-    compile 'org.jetbrains.kotlinx:kotlinx-coroutines-core:0.23.3'
+    compile 'org.jetbrains.kotlinx:kotlinx-coroutines-core:0.25.0'
 
     testCompile "org.mockito:mockito-core:2.12.0"
     testCompile "com.nhaarman:mockito-kotlin-kt1.1:1.5.0"
@@ -57,7 +57,7 @@ dependencies {
     //compile "org.apache.logging.log4j:log4j-core:2.8"
 
     compile 'io.github.microutils:kotlin-logging:1.5.4'
-    testCompile 'org.slf4j:slf4j-simple:1.6.1'
+    testCompile 'org.slf4j:slf4j-simple:1.7.5'
 }
 
 compileKotlin {
