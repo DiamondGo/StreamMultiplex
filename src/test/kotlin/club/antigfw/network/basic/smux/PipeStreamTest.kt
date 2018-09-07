@@ -1,4 +1,4 @@
-package science.deepmemo.network.basic.smux
+package club.antigfw.network.basic.smux
 
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.runBlocking

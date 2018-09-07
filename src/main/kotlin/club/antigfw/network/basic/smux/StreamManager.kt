@@ -1,9 +1,9 @@
-package science.deepmemo.network.basic.smux
+package club.antigfw.network.basic.smux
 
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.Channel
 import mu.KotlinLogging
-import science.deepmemo.utils.logger
+import club.antigfw.utils.logger
 import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream

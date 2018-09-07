@@ -1,4 +1,4 @@
-package science.deepmemo.network.basic.smux
+package club.antigfw.network.basic.smux
 
 import kotlinx.coroutines.experimental.channels.Channel
 import kotlinx.coroutines.experimental.delay
@@ -7,7 +7,7 @@ import org.junit.Assert
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
-import science.deepmemo.utils.logger
+import club.antigfw.utils.logger
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream

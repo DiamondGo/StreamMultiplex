@@ -1,4 +1,4 @@
-package science.deepmemo.network.basic.smux
+package club.antigfw.network.basic.smux
 
 import org.junit.Test
 import org.junit.BeforeClass
@@ -38,7 +38,7 @@ class FrameTest {
 
     @Test fun testReadWrite() {
         val output = ByteArrayOutputStream()
-        val frame1 = Frame(version, Command.PSH, 0, byteArrayOf(1,2,3,4))
+        val frame1 = Frame(version, Command.PSH, 0, byteArrayOf(1, 2, 3, 4))
         frame1.writeTo(output)
         val frame3 = Frame(version, Command.FIN, 99, byteArrayOf())
         frame3.writeTo(output)

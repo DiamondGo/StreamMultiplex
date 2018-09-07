@@ -1,4 +1,4 @@
-package science.deepmemo.utils
+package club.antigfw.utils
 
 import mu.KLogger
 import mu.KotlinLogging

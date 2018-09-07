@@ -19,7 +19,7 @@ plugins {
 apply plugin: 'kotlin'
 apply plugin: 'idea'
 
-group 'science.deepmemo'
+group 'club.antigfw'
 version '0.1-SNAPSHOT'
 
 kotlin {
