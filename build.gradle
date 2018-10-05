@@ -19,6 +19,13 @@ plugins {
 apply plugin: 'kotlin'
 apply plugin: 'idea'
 
+allprojects{
+    repositories {
+        jcenter()
+        maven { url "https://jitpack.io" }
+    }
+}
+
 group 'club.antigfw'
 version '0.1-SNAPSHOT'
 
@@ -58,6 +65,9 @@ dependencies {
 
     compile 'io.github.microutils:kotlin-logging:1.5.4'
     testCompile 'org.slf4j:slf4j-simple:1.7.5'
+
+    // commons
+    compile 'com.github.DiamondGo:commons:master-SNAPSHOT'
 }
 
 compileKotlin {
