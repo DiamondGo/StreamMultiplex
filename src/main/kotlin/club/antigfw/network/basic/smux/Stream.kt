@@ -1,7 +1,7 @@
 package club.antigfw.network.basic.smux
 
-import kotlinx.coroutines.experimental.channels.Channel
-import kotlinx.coroutines.experimental.runBlocking
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.runBlocking
 import java.io.*
 import java.util.concurrent.TimeoutException
 import kotlin.math.min

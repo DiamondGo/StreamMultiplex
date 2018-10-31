@@ -1,8 +1,8 @@
 package club.antigfw.network.basic.smux
 
-import kotlinx.coroutines.experimental.channels.Channel
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.runBlocking
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Before
 import org.junit.BeforeClass
@@ -36,13 +36,13 @@ class StreamManagerTest {
     @Test fun testOpenStream() {
         val pipeS2C = PipeStream()
         val inputS2C = pipeS2C.getInput()
-        val outputS2C = pipeS2C.getOutput()
+        //val outputS2C = pipeS2C.getOutput()
 
         val pipeC2S = PipeStream()
-        val inputC2S = pipeC2S.getInput()
+        //val inputC2S = pipeC2S.getInput()
         val outputC2S = pipeC2S.getOutput()
 
-        val server = StreamServer(Config.defaultConfig.copy(maxOpenStream = maxStream, dedicatedThread = 2, maxFrameSize = 64), inputC2S, outputS2C)
+        //val server = StreamServer(Config.defaultConfig.copy(maxOpenStream = maxStream, dedicatedThread = 2, maxFrameSize = 64), inputC2S, outputS2C)
         val client = StreamClient(Config.defaultConfig.copy(maxOpenStream = maxStream, dedicatedThread = 2, maxFrameSize = 64), inputS2C, outputC2S)
 
 
@@ -178,7 +178,7 @@ class StreamManagerTest {
                 val stream = client.open()
                 val bytes = ByteArray(rand.nextInt(maxRand - minRand) + minRand) {rand.nextInt(256).toByte()}
                 val input = stream!!.getInputStream()
-                val output = stream!!.getOutputStream()
+                val output = stream.getOutputStream()
 
                 output.write(bytes)
                 output.close()
@@ -198,10 +198,10 @@ class StreamManagerTest {
             val stream = server.accept()
             val thread = Thread {
                 val buf = ByteArray(32)
-                val input = stream!!.getInputStream()
-                val output = stream!!.getOutputStream()
+                val input = stream.getInputStream()
+                val output = stream.getOutputStream()
 
-                var readcnt = 0
+                var readcnt: Int
                 do {
                     readcnt = input.read(buf)
                     if (readcnt > 0) {

@@ -1,13 +1,12 @@
 package club.antigfw.network.basic.smux
 
-import kotlinx.coroutines.experimental.channels.Channel
-import kotlinx.coroutines.experimental.channels.ClosedReceiveChannelException
-import kotlinx.coroutines.experimental.channels.ClosedSendChannelException
-import kotlinx.coroutines.experimental.runBlocking
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ClosedReceiveChannelException
+import kotlinx.coroutines.channels.ClosedSendChannelException
+import kotlinx.coroutines.runBlocking
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
-import kotlin.experimental.and
 
 class PipeStream {
     companion object {
@@ -37,7 +36,7 @@ class PipeStream {
         return object : OutputStream() {
             override fun write(b: Int) {
                 try {
-                    runBlocking<Unit> { byteChannel.send(b.toByte()) }
+                    runBlocking { byteChannel.send(b.toByte()) }
                 } catch (e : ClosedSendChannelException) {
                     throw IOException("StreamOld closed")
                 }

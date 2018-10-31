@@ -1,8 +1,7 @@
 package club.antigfw.network.basic.smux
 
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.Channel
-import mu.KotlinLogging
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import club.antigfw.utils.logger
 import java.io.EOFException
 import java.io.IOException
@@ -19,9 +18,9 @@ abstract class StreamManager(val config: Config, val input: InputStream, val out
     protected val newStreamQueue = Channel<Stream>(config.maxOpenStream)
     protected var recvEnable = true
 
-    protected val coroutineContex = if (config.dedicatedThread == 0) CommonPool else newFixedThreadPoolContext(2, "hehe")
+    protected val coroutineContex = if (config.dedicatedThread == 0) Dispatchers.Default else newFixedThreadPoolContext(2, "hehe")
 
-    protected val recvLoop = launch(coroutineContex) {
+    protected val recvLoop = GlobalScope.launch(coroutineContex, CoroutineStart.DEFAULT, {
         try {
             while (recvEnable) {
                 //withTimeout(config.keepAliveInterval.toMillis())
@@ -33,7 +32,7 @@ abstract class StreamManager(val config: Config, val input: InputStream, val out
                         val stream = synchronized(this@StreamManager.streamMap) {
                             if (frame.streamId in this@StreamManager.streamMap) {
                                 log.error { "There are already a Stream with id ${frame.streamId}" }
-                                TODO("Send back message about conflict detected")
+                                // TODO("Send back message about conflict detected")
                                 null
                             } else {
                                 val stream = Stream(frame.streamId, this@StreamManager)
@@ -73,7 +72,7 @@ abstract class StreamManager(val config: Config, val input: InputStream, val out
             }
             this@StreamManager.suddenDeath()
         }
-    }
+    })
 
     protected fun suddenDeath() {
         // clear all resources without sending data
@@ -86,16 +85,16 @@ abstract class StreamManager(val config: Config, val input: InputStream, val out
         }
     }
 
-    protected val sendLoop = launch(coroutineContex) {
+    protected val sendLoop = GlobalScope.launch(coroutineContex, CoroutineStart.DEFAULT, {
         while (!writeFrameQueue.isClosedForReceive) {
             val frame = writeFrameQueue.receiveOrNull()
             frame?.let {
                 it.writeTo(output)
             }
         }
-    }
+    })
 
-    fun writeFrame(frame: Frame):Unit {
+    fun writeFrame(frame: Frame) {
         runBlocking {
             writeFrameQueue.send(frame)
         }

@@ -1,7 +1,8 @@
 package club.antigfw.network.basic.smux
 
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.runBlocking
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Test
 import java.nio.ByteBuffer
@@ -15,13 +16,13 @@ class PipeStreamTest {
 
         val data = ByteArray(1024 * 10) { (Random().nextInt() % 256).toByte() }
 
-        val inRun = launch {
+        val inRun = GlobalScope.launch {
             (0 until data.size).forEach {
                 val byte = inputStream.read()
                 Assert.assertEquals(byte.toByte(), data[it])
             }
         }
-        val outRun = launch { outputStream.write(data) }
+        val outRun = GlobalScope.launch{ outputStream.write(data) }
 
         runBlocking {
             inRun.join()
