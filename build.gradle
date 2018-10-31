@@ -35,7 +35,7 @@ kotlin {
     }
 }
 
-sourceCompatibility = 1.8
+sourceCompatibility = 1.7
 
 repositories {
     mavenCentral()
@@ -43,7 +43,7 @@ repositories {
 }
 
 dependencies {
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     testCompile group: 'junit', name: 'junit', version: '4.12'
 
     compile "org.jetbrains.kotlin:kotlin-reflect"
@@ -60,10 +60,6 @@ dependencies {
     compile "com.google.dagger:dagger:$dagger_version"
     apt "com.google.dagger:dagger-compiler:$dagger_version"
 
-    //compile "org.apache.logging.log4j:log4j-api:2.8"
-    //compile "org.apache.logging.log4j:log4j-core:2.8"
-
-    compile 'io.github.microutils:kotlin-logging:1.5.4'
     testCompile 'org.slf4j:slf4j-simple:1.7.5'
 
     // commons
@@ -71,11 +67,11 @@ dependencies {
 }
 
 compileKotlin {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "1.7"
 }
 
 compileTestKotlin {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "1.7"
 }
 
 sourceSets {
